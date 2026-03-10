@@ -9,10 +9,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     let args = CommandLine.arguments
     var terminalBundleID = "com.mitchellh.ghostty"
     var panel: NotificationPanel?
+    var originalFrontmostBundleID: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let envBundleID = ProcessInfo.processInfo.environment["OC_NOTIFY_TERMINAL"] {
             terminalBundleID = envBundleID
+        }
+        if let envFrontmost = ProcessInfo.processInfo.environment["OC_NOTIFY_FRONTMOST_BUNDLE"], !envFrontmost.isEmpty {
+            originalFrontmostBundleID = envFrontmost
+        } else {
+            originalFrontmostBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         }
 
         let event = args.count > 1 ? args[1] : "unknown"
@@ -166,6 +172,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         panel.alphaValue = 0
         panel.orderFront(nil)
         NSLog("oc-notify: panel shown at (\(panel.frame.origin.x), \(panel.frame.origin.y))")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            if let bundleID = self.originalFrontmostBundleID,
+               bundleID != Bundle.main.bundleIdentifier,
+               let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
+                app.activate()
+            }
+        }
 
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.25
@@ -205,7 +218,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
 }
 
 let app = NSApplication.shared
-app.setActivationPolicy(.prohibited)
+app.setActivationPolicy(.accessory)
 let delegate = AppDelegate()
 app.delegate = delegate
 app.finishLaunching()
