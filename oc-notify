@@ -34,4 +34,9 @@ if [[ "$DND" == "1" ]]; then
   fi
 fi
 
-osascript -e "display notification \"$BODY\" with title \"$TITLE\" subtitle \"$SUBTITLE\""
+SWIFT_APP="$HOME/Applications/OcNotify.app/Contents/MacOS/oc-notify-swift"
+if [[ -x "$SWIFT_APP" ]]; then
+  "$SWIFT_APP" "$EVENT" "$MESSAGE" "$SESSION_TITLE" "$PROJECT_NAME" &
+else
+  osascript -e "display notification \"$BODY\" with title \"$TITLE\" subtitle \"$SUBTITLE\""
+fi
