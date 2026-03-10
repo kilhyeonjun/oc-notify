@@ -22,4 +22,16 @@ SUBTITLE="$SESSION_TITLE"
 
 BODY="$MESSAGE — [$EVENT] $TIMESTAMP"
 
+LOG_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/oc-notify"
+mkdir -p "$LOG_DIR"
+echo "$TIMESTAMP|$EVENT|$PROJECT_NAME|$SESSION_TITLE|$MESSAGE" >> "$LOG_DIR/history.log"
+
+DND=$(defaults read com.apple.controlcenter "NSStatusItem Visible FocusModes" 2>/dev/null || echo "0")
+if [[ "$DND" == "1" ]]; then
+  FOCUS_MODE=$(plutil -extract data.0.modeIdentifier raw ~/Library/DoNotDisturb/DB/ModeConfigurations.json 2>/dev/null || echo "")
+  if [[ -n "$FOCUS_MODE" ]]; then
+    exit 0
+  fi
+fi
+
 osascript -e "display notification \"$BODY\" with title \"$TITLE\" subtitle \"$SUBTITLE\""
