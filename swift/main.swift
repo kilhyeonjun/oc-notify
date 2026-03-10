@@ -32,8 +32,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showBanner(title: String, subtitle: String, body: String) {
-        guard let screen = NSScreen.main else {
-            NSApp.terminate(nil)
+        let mouseLocation = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+        guard let screen = screen else {
+            CFRunLoopStop(CFRunLoopGetMain())
             return
         }
 
@@ -131,14 +135,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func activateTerminal() {
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: terminalBundleID) {
-            NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+        let apps = NSRunningApplication.runningApplications(withBundleIdentifier: terminalBundleID)
+        if let app = apps.first {
+            app.activate()
         }
     }
 
     func dismissBanner() {
         guard let panel = self.panel else {
-            NSApp.terminate(nil)
+            CFRunLoopStop(CFRunLoopGetMain())
             return
         }
         NSAnimationContext.runAnimationGroup({ ctx in
@@ -146,13 +151,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             panel.animator().alphaValue = 0
         }, completionHandler: {
             panel.orderOut(nil)
-            NSApp.terminate(nil)
+            CFRunLoopStop(CFRunLoopGetMain())
         })
     }
 }
 
 let app = NSApplication.shared
-app.setActivationPolicy(.accessory)
+app.setActivationPolicy(.prohibited)
 let delegate = AppDelegate()
 app.delegate = delegate
-app.run()
+app.finishLaunching()
+delegate.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
+CFRunLoopRun()
