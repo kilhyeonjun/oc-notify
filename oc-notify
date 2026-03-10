@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# oc-notify — Smart notification wrapper for opencode-notifier + terminal-notifier
+# https://github.com/kilhyeonjun/oc-notify
+#
+# Usage (via opencode-notifier command hook):
+#   oc-notify <event> <message> [sessionTitle] [projectName] [timestamp] [turn]
+#
+# Sends macOS notifications via terminal-notifier with:
+#   - Click-to-focus for your terminal app (Ghostty, iTerm2, Terminal, etc.)
+#   - Per-event grouping (replaces stale notifications)
+#   - Terminal app icon as sender
+#   - Optional tmux session switching on click
+
+set -euo pipefail
+
+# ─── Config (override via ~/.config/oc-notify/config) ─────────────────────────
+
+# Bundle ID of the terminal app to focus on notification click
+TERMINAL_BUNDLE_ID="${OC_NOTIFY_TERMINAL:-com.mitchellh.ghostty}"
+
+# Path to terminal-notifier
+NOTIFIER="${OC_NOTIFY_BIN:-$(command -v terminal-notifier 2>/dev/null || echo "")}"
+
+# Whether to play sound via terminal-notifier (plugin already plays its own)
+PLAY_SOUND="${OC_NOTIFY_SOUND:-false}"
+
+# tmux session to switch to on click (empty = just focus terminal)
+TMUX_TARGET="${OC_NOTIFY_TMUX_TARGET:-}"
+
+# ─── Load user config ────────────────────────────────────────────────────────
+
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/oc-notify/config"
+if [[ -f "$CONFIG_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$CONFIG_FILE"
+fi
+
+# ─── Args ─────────────────────────────────────────────────────────────────────
+
+EVENT="${1:-unknown}"
+MESSAGE="${2:-}"
+SESSION_TITLE="${3:-}"
+PROJECT_NAME="${4:-}"
+TIMESTAMP="${5:-}"
+TURN="${6:-}"
+
+# ─── Validate ─────────────────────────────────────────────────────────────────
+
+if [[ -z "$NOTIFIER" ]]; then
+  echo "oc-notify: terminal-notifier not found. Install: brew install terminal-notifier" >&2
+  exit 1
+fi
+
+if [[ -z "$MESSAGE" ]]; then
+  echo "oc-notify: no message provided" >&2
+  exit 1
+fi
+
+# ─── Build notification ──────────────────────────────────────────────────────
+
+TITLE="OpenCode"
+if [[ -n "$PROJECT_NAME" ]]; then
+  TITLE="OpenCode ($PROJECT_NAME)"
+fi
+
+SUBTITLE="[$EVENT]"
+if [[ -n "$TIMESTAMP" ]]; then
+  SUBTITLE="[$EVENT] $TIMESTAMP"
+fi
+
+# Build args array
+ARGS=(
+  -title "$TITLE"
+  -subtitle "$SUBTITLE"
+  -message "$MESSAGE"
+  -activate "$TERMINAL_BUNDLE_ID"
+  -sender "$TERMINAL_BUNDLE_ID"
+  -group "oc-notify-$EVENT"
+)
+
+# Optional sound
+if [[ "$PLAY_SOUND" == "true" ]]; then
+  ARGS+=(-sound default)
+fi
+
+# Optional tmux switch on click
+if [[ -n "$TMUX_TARGET" ]]; then
+  ARGS+=(-execute "tmux select-window -t '$TMUX_TARGET' 2>/dev/null || true")
+fi
+
+# ─── Send ─────────────────────────────────────────────────────────────────────
+
+exec "$NOTIFIER" "${ARGS[@]}"
