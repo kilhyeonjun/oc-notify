@@ -1,10 +1,11 @@
 import Cocoa
+import UserNotifications
 
 class NotificationPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     let args = CommandLine.arguments
     var terminalBundleID = "com.mitchellh.ghostty"
     var panel: NotificationPanel?
@@ -27,8 +28,55 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let subtitle = sessionTitle.isEmpty ? "[\(event)] \(ts)" : "\(sessionTitle)  ·  \(ts)"
         let body = message
 
+        postSystemNotification(title: title, subtitle: subtitle, body: body)
         NSLog("oc-notify: showing banner title=\(title)")
         showBanner(title: title, subtitle: subtitle, body: body)
+    }
+
+    func postSystemNotification(title: String, subtitle: String, body: String) {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+
+        center.getNotificationSettings { settings in
+            let status = settings.authorizationStatus
+            if status == .notDetermined {
+                center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+                    NSLog("oc-notify: system-notification auth granted=\(granted) error=\(String(describing: error))")
+                    if granted {
+                        self.enqueueSystemNotification(center: center, title: title, subtitle: subtitle, body: body)
+                    }
+                }
+                return
+            }
+
+            if status == .authorized || status == .provisional {
+                self.enqueueSystemNotification(center: center, title: title, subtitle: subtitle, body: body)
+            } else {
+                NSLog("oc-notify: system-notification skipped status=\(status.rawValue)")
+            }
+        }
+    }
+
+    func enqueueSystemNotification(center: UNUserNotificationCenter, title: String, subtitle: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.subtitle = subtitle
+        content.body = body
+        content.sound = nil
+
+        let request = UNNotificationRequest(
+            identifier: "oc-notify-system-\(UUID().uuidString)",
+            content: content,
+            trigger: nil
+        )
+
+        center.add(request) { error in
+            if let error = error {
+                NSLog("oc-notify: system-notification enqueue error=\(error.localizedDescription)")
+            } else {
+                NSLog("oc-notify: system-notification enqueued")
+            }
+        }
     }
 
     func showBanner(title: String, subtitle: String, body: String) {

@@ -152,6 +152,14 @@ else
   fail "Banner title" "missing project name"
 fi
 
+if echo "$OUTPUT" | grep -q "system-notification enqueued"; then
+  pass "System notification enqueued for Notification Center"
+elif echo "$OUTPUT" | grep -q "system-notification skipped"; then
+  skip "System notification enqueue" "permission denied or disabled"
+else
+  fail "System notification" "missing enqueue/skip log"
+fi
+
 # ─── 5. Focus preservation ───
 echo ""
 echo -e "${BOLD}[5] Focus preservation${NC}"
