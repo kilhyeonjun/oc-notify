@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.kilhyeonjun.oc-notify</string>
+    <string>com.kilhyeonjun.ocnotify</string>
     <key>CFBundleName</key>
     <string>OcNotify</string>
     <key>CFBundleDisplayName</key>
@@ -11,9 +11,9 @@
     <key>CFBundleExecutable</key>
     <string>oc-notify-swift</string>
     <key>CFBundleVersion</key>
-    <string>1.0.0</string>
+    <string>1.1.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>1.1.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSUIElement</key>
